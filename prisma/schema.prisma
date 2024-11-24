@@ -1,0 +1,48 @@
+
+      datasource db {
+        provider = "postgresql"
+        url      = env("DATABASE_URL")
+      }
+      
+      generator client {
+        provider = "prisma-client-js"
+      }
+    
+
+model users {
+  id  Int  @id @default(autoincrement())
+  email  String  
+  password  String  
+  role  String?  
+  verified  Boolean?  
+  verified_at  DateTime?  
+  login_attempts  Int?  
+  locked_until  DateTime?  
+  last_login  DateTime?  
+  is_deleted  Boolean?  
+  created_at  DateTime  
+  updated_at  DateTime  
+  otp_method  String?  
+}
+
+model otp_codes {
+  id  Int  @id @default(autoincrement())
+  user_id  Int  
+  code  String  
+  type  String  
+  method  String  
+  used  Boolean?  
+  expires_at  DateTime  
+  created_at  DateTime  
+  updated_at  DateTime  
+  otp_method  String?  
+}
+
+model products {
+  id  Int  @id @default(autoincrement())
+  name  String  
+  price  Int  
+  description  String?  
+  user_id  Int?  
+  created_at  DateTime  
+}
