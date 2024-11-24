@@ -8,7 +8,6 @@ const path = require('path');
 const { authOperations } = require('../src/auth/operations');
 const { authSchemas } = require('./schemas');
 const endpoint = require('../src/core/Endpoint');
-const { setup } = require('./setup');
 const { configure } = require('./config');
 const { PrismaClient } = require('@prisma/client');
 const DatabaseSetup = require('../src/database/setup-database');
@@ -16,7 +15,7 @@ const { schemasDB, fieldAttributes } = require('./db-structure');
 
 async function initializeDatabase() {
   try {
-    const dbSetup = new DatabaseSetup(schemasDB.models);
+    const dbSetup = new DatabaseSetup(schemasDB);
     await dbSetup.setup();
   } catch (error) {
     console.error('Error setting up database:', error);
@@ -105,6 +104,8 @@ async function startServer() {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    // Play a sound to indicate server started successfully
+    console.log('\u0007'); // Using Unicode escape sequence for bell character
   });
 
   // Handle graceful shutdown

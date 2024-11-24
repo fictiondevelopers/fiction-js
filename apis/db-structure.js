@@ -17,16 +17,17 @@ const schemasDB = {
     users: Joi.object({
       id: Joi.number().integer().required(),
       email: Joi.string().email().required().external(async (value, helpers) => {
-        const existingUser = await prisma.users.findUnique({ where: { email: value } });
+        console.log('Checking if email already exists:', value);
+        const existingUser = await prisma.users.findFirst({ where: { email: value } });
         if (existingUser) {
-          return helpers.error('any.invalid');
+          throw new Error('Email address is already registered');
         }
         return value;
       }),
-      username: Joi.string().required().external(async (value, helpers) => {
-        const existingUser = await prisma.users.findUnique({ where: { username: value } });
+      username: Joi.string().external(async (value, helpers) => {
+        const existingUser = await prisma.users.findFirst({ where: { username: value } });
         if (existingUser) {
-          return helpers.error('any.invalid');
+          return helpers.message('Username is already taken');
         }
         return value;
       }),

@@ -86,8 +86,11 @@ class DatabaseSetup {
       }
     `;
 
+    // console.log('Generating schema for models:', this.config.models);
+
     // Convert each model schema
     Object.entries(this.config.models).forEach(([modelName, joiSchema]) => {
+      // console.log('Generating schema for model:', modelName);
       const prismaModel = this.joiSchemaToPrisma(modelName, joiSchema);
       schemaContent += `\n\n${prismaModel}`;
     });
@@ -104,6 +107,9 @@ class DatabaseSetup {
       const schemaPath = path.join(this.prismaDir, 'schema.prisma');
       await fs.writeFile(schemaPath, schema);
       console.log('Schema file written to:', schemaPath);
+
+      // clear all tables
+      // await execAsync('npx prisma migrate reset');
 
       console.log('Generating Prisma client...');
       await execAsync('npx prisma generate');

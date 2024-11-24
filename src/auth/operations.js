@@ -3,6 +3,8 @@ const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
 const twilio = require('twilio');
 const { authConfig } = require('../../apis/config');
+const { validateModel } = require('../core/validation');
+
 
 const generateOTP = (length = 6) => {
   return Math.random().toString().substr(2, length);
@@ -65,53 +67,36 @@ const createAuthResponse = (user, tokens) => {
 const authOperations = {
   signup: async (prisma, data) => {
     try {
-      // Check for existing email
-      const existingEmail = await prisma.users.findUnique({
-        where: { email: data.email }
-      });
-      if (existingEmail) {
-        throw new Error('Email already registered');
-      }
-
-      // Check for existing username if provided
-      if (data.username) {
-        const existingUsername = await prisma.users.findUnique({
-          where: { username: data.username }
-        });
-        if (existingUsername) {
-          throw new Error('Username already taken');
-        }
-      }
-
-      // Check for existing phone if provided
-      if (data.phone) {
-        const existingPhone = await prisma.users.findUnique({
-          where: { phone: data.phone }
-        });
-        if (existingPhone) {
-          throw new Error('Phone number already registered');
-        }
-      }
-
-      // Continue with existing signup logic...
-      const hashedPassword = await bcrypt.hash(data.password, 10);
+      const validatedData = await validateModel('users', data, [
+        'email',
+        'password',
+        'otp_method'
+      ]);
       
+      const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+      
+      const userData = {
+        ...validatedData,
+        password: hashedPassword,
+        role: authConfig.default_role || 'user',
+        login_attempts: 0,
+        last_login: new Date(),
+        created_at: new Date(),
+        updated_at: new Date()
+      };
+
       const user = await prisma.users.create({
-        data: {
-          ...data,
-          password: hashedPassword,
-          role: authConfig.default_role,
-          login_attempts: 0,
-          last_login: new Date(),
-          created_at: new Date(),
-          updated_at: new Date()
-        }
+        data: userData
       });
 
-      // Rest of the signup logic...
+      const tokens = generateTokens(user);
+      return createAuthResponse(user, tokens);
+
     } catch (error) {
+      if (error.message.startsWith('[{')) {
+        throw new Error(error.message);
+      }
       if (error.code === 'P2002') {
-        // Prisma unique constraint violation error
         const field = error.meta.target[0];
         throw new Error(`${field} already exists`);
       }
@@ -307,6 +292,18 @@ const authOperations = {
       success: true,
       res: { message: 'Password reset successfully' }
     };
+  },
+
+  createProduct: async (prisma, data) => {
+    try {
+      const validatedData = await validateModel('products', data);
+      const product = await prisma.products.create({
+        data: validatedData
+      });
+      return { success: true, product };
+    } catch (error) {
+      throw error;
+    }
   }
 };
 
