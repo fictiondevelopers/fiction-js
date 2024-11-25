@@ -31,7 +31,11 @@ const schemasDB = {
         }
         return value;
       }),
-      password: Joi.string().required(),
+      password: Joi.string()
+        .min(6)
+        .pattern(new RegExp('^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{6,}$'))
+        .required()
+        .error(new Error('Password must be at least 6 characters long and include both letters and numbers')),
       role: Joi.string().default('user'),
       verified: Joi.boolean().default(false),
       verified_at: Joi.date(),

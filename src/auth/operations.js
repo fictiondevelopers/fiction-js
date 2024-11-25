@@ -12,21 +12,33 @@ const generateOTP = (length = 6) => {
 
 const sendOTP = async (user, code, method, prisma) => {
   if (method === 'email') {
-    const transporter = nodemailer.createTransport({
+    const smtpConfig = {
       host: authConfig.smtp.host,
       port: authConfig.smtp.port,
+      secure: true,
       auth: {
         user: authConfig.smtp.user,
         pass: authConfig.smtp.pass
+      },
+      tls: {
+        rejectUnauthorized: false
       }
-    });
+    };
 
-    await transporter.sendMail({
-      from: authConfig.smtp.from,
-      to: user.email,
-      subject: 'Verification Code',
-      text: `Your verification code is: ${code}`
-    });
+    console.log(smtpConfig);
+    const transporter = nodemailer.createTransport(smtpConfig);
+
+    try {
+      await transporter.sendMail({
+        from: authConfig.smtp.from,
+        to: user.email,
+        subject: 'Verification Code',
+        text: `Your verification code is: ${code}`
+      });
+    } catch (error) {
+      console.error('Email sending error:', error);
+      throw new Error('Failed to send verification email');
+    }
   } else if (method === 'phone') {
     const client = twilio(authConfig.twilio.account_sid, authConfig.twilio.auth_token);
     await client.messages.create({
@@ -82,12 +94,41 @@ const authOperations = {
         login_attempts: 0,
         last_login: new Date(),
         created_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
+        verified: !authConfig.verify_signup
       };
 
       const user = await prisma.users.create({
         data: userData
       });
+
+      if (authConfig.verify_signup) {
+        const code = generateOTP(authConfig.otp_length);
+        const method = data.otp_method || 'email';
+
+        await prisma.otp_codes.create({
+          data: {
+            user_id: user.id,
+            code,
+            type: 'signup',
+            method,
+            expires_at: new Date(Date.now() + authConfig.otp_expiry * 60000),
+            created_at: new Date(),
+            updated_at: new Date()
+          }
+        });
+
+        await sendOTP(user, code, method, prisma);
+
+        return {
+          success: true,
+          res: {
+            message: `Verification code sent to your ${method}`,
+            user_id: user.id,
+            requires_verification: true
+          }
+        };
+      }
 
       const tokens = generateTokens(user);
       return createAuthResponse(user, tokens);
@@ -155,7 +196,9 @@ const authOperations = {
           code,
           type: 'login',
           method,
-          expires_at: new Date(Date.now() + authConfig.otp_expiry * 60000)
+          expires_at: new Date(Date.now() + authConfig.otp_expiry * 60000),
+          created_at: new Date(),
+          updated_at: new Date()
         }
       });
 
@@ -243,7 +286,9 @@ const authOperations = {
         code,
         type: 'reset',
         method: 'email',
-        expires_at: new Date(Date.now() + authConfig.otp_expiry * 60000)
+        expires_at: new Date(Date.now() + authConfig.otp_expiry * 60000),
+        created_at: new Date(),
+        updated_at: new Date()
       }
     });
 
@@ -297,8 +342,15 @@ const authOperations = {
   createProduct: async (prisma, data) => {
     try {
       const validatedData = await validateModel('products', data);
+
+      const dataToCreate = {
+        ...validatedData,
+        created_at: new Date(),
+        updated_at: new Date()
+      };
+
       const product = await prisma.products.create({
-        data: validatedData
+        data: dataToCreate
       });
       return { success: true, product };
     } catch (error) {

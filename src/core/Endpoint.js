@@ -1,4 +1,3 @@
-const { authSchemas } = require('../../apis/schemas');
 
 class Endpoint {
   constructor(path) {
