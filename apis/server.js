@@ -127,27 +127,41 @@ async function startServer() {
     }
   }
 
-  app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+  app.get('/auth/google', (req, res) => {
+    // Store return URL in session before authentication
+    req.session.returnUrl = req.query.return_url;
+    passport.authenticate('google', { scope: ['profile', 'email'] })(req, res);
+  });
 
   app.get('/auth/google/callback',
-    passport.authenticate('google',
-      { failureRedirect: '/failed' }),
-    (req, res) => {
-      res.redirect('/good');
-    })
+    passport.authenticate('google', { failureRedirect: '/failed' }),
+    async (req, res) => {
+      try {
+        // Get user data from Google profile
+        const googleUser = req.user._json;
+        
+        // Call social connect operation
+        const result = await authOperations.socialConnect({
+          first_name: googleUser.given_name,
+          last_name: googleUser.family_name,
+          social_id: googleUser.sub,
+          type: "Google", 
+          picture_url: googleUser.picture
+        });
 
-  app.get('/failed', (req, res) => res.send('You Failed to log in!'))
+        // Get stored return URL
+        const returnUrl = req.session.returnUrl || '/';
+        delete req.session.returnUrl;
 
-  app.get('/good', isLoggedIn, (req, res) => {
-    console.log(req.user._json)
-    res.send('You successfully logged in!')
-    // res.render('pages/profile.ejs', {
-    //   name: req.user.displayName,
-    //   pic: req.user._json.picture,
-    //   email: req.user.emails[0].value,
-    //   profile: "google"
-    // })
-  })
+        // Redirect with access token
+        res.redirect(`${returnUrl}?access_token=${result.accessToken}`);
+      } catch (error) {
+        console.error('Social connect error:', error);
+        res.redirect('/failed');
+      }
+    });
+
+  app.get('/failed', (req, res) => res.send('Failed to authenticate with Google'));
 
   /////////////////////////// GOOOOGLE AUTH ENDS ///////////////////////////
 

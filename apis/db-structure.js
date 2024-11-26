@@ -15,7 +15,12 @@ const fieldAttributes = {
 const schemasDB = {
   models: {
     users: Joi.object({
-      id: Joi.number().integer().required(),
+      id: Joi.number().integer(),
+      first_name: Joi.string(),
+      last_name: Joi.string(),
+      social_id: Joi.string(),
+      type: Joi.string(),
+      picture_url: Joi.string(),
       email: Joi.string().email().required().external(async (value, helpers) => {
         console.log('Checking if email already exists:', value);
         const existingUser = await prisma.users.findFirst({ where: { email: value } });

@@ -11,6 +11,11 @@
 
 model users {
   id  Int  @id @default(autoincrement())
+  first_name  String?  
+  last_name  String?  
+  social_id  String?  
+  type  String?  
+  picture_url  String?  
   email  String  
   username  String?  
   password  String  

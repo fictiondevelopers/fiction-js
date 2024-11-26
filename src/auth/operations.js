@@ -96,7 +96,8 @@ const authOperations = {
         created_at: new Date(),
         updated_at: new Date(),
         is_deleted: false,
-        verified: !authConfig.verify_signup
+        verified: !authConfig.verify_signup,
+        type: 'email'
       };
 
       const user = await prisma.users.create({
@@ -371,6 +372,26 @@ const authOperations = {
     } catch (error) {
       throw error;
     }
+  },
+
+  socialConnect: async (prisma, data) => {
+    
+    const existingUser = await prisma.users.findFirst({
+      where: { social_id: data.socialId }
+    });
+
+    if (existingUser) {
+      
+      const tokens = generateTokens(existingUser);
+      return createAuthResponse(existingUser, tokens);
+    }
+
+    const newUser = await prisma.users.create({
+      data: { ...data, created_at: new Date(), updated_at: new Date(), verified: true, is_deleted: false }
+    });
+
+    const tokens = generateTokens(newUser);
+    return createAuthResponse(newUser, tokens);
   }
 };
 
