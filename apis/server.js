@@ -11,6 +11,10 @@ const { configure } = require('./config');
 const { PrismaClient } = require('@prisma/client');
 const DatabaseSetup = require('../src/database/setup-database');
 const { schemasDB } = require('./db-structure');
+const passport = require('passport');
+const session = require('express-session')
+require('./../passport-setup')
+
 
 async function initializeDatabase() {
   try {
@@ -25,7 +29,7 @@ async function initializeDatabase() {
 async function startServer() {
   // Initialize database first
   await initializeDatabase();
-  
+
   // Configure auth settings
   configure({
     auth: {
@@ -42,13 +46,31 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+
+  // social auth
+  app.use(session({
+    secret: ['key1', 'key2'], // Use environment variables in production
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  }));
+  app.use(passport.initialize());
+  app.use(passport.session());
+
   // Health check endpoint
   app.get('/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date() });
   });
 
+  // Health check endpoint
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date() });
+  });
+
   const authEndpoints = {
-    signup: endpoint('/auth/signup')
+    signup: endpoint('/api/auth/signup')
       .handle('post', async (req) => {
         // When verify_signup is true, returns:
         // { success: true, res: { message: string, user_id: string, requires_verification: true } }
@@ -57,7 +79,7 @@ async function startServer() {
         return await authOperations.signup(prisma, req.body);
       }),
 
-    login: endpoint('/auth/login')
+    login: endpoint('/api/auth/login')
       .handle('post', async (req) => {
         // When verify_login is true, returns:
         // { success: true, res: { message: string, user_id: string, requires_verification: true } }
@@ -66,24 +88,24 @@ async function startServer() {
         return await authOperations.login(prisma, req.body);
       }),
 
-    verify: endpoint('/auth/verify')
+    verify: endpoint('/api/auth/verify')
       .handle('post', async (req) => {
         // Expects: { user_id: string, code: string, type: 'signup' | 'login' }
         // Returns: { success: true, res: { user: User, accessToken: string, refreshToken: string } }
         return await authOperations.verify(prisma, req.body);
       }),
 
-    refresh: endpoint('/auth/refresh')
+    refresh: endpoint('/api/auth/refresh')
       .handle('post', async (req) => {
         return await authOperations.refresh(prisma, req.body.refreshToken);
       }),
 
-    requestReset: endpoint('/auth/request-reset')
+    requestReset: endpoint('/api/auth/request-reset')
       .handle('post', async (req) => {
         return await authOperations.requestReset(prisma, req.body.email);
       }),
 
-    resetPassword: endpoint('/auth/reset-password')
+    resetPassword: endpoint('/api/auth/reset-password')
       .handle('post', async (req) => {
         return await authOperations.resetPassword(prisma, req.body);
       })
@@ -93,6 +115,42 @@ async function startServer() {
   Object.values(authEndpoints).forEach(endpoint => {
     app.post(endpoint.path, (req, res) => endpoint.execute(req, res));
   });
+
+
+  /////////////////////////// GOOOOGLE AUTH ///////////////////////////
+
+  const isLoggedIn = (req, res, next) => {
+    if (req.user) {
+      next();
+    } else {
+      res.sendStatus(401);
+    }
+  }
+
+  app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+  app.get('/auth/google/callback',
+    passport.authenticate('google',
+      { failureRedirect: '/failed' }),
+    (req, res) => {
+      res.redirect('/good');
+    })
+
+  app.get('/failed', (req, res) => res.send('You Failed to log in!'))
+
+  app.get('/good', isLoggedIn, (req, res) => {
+    console.log(req.user._json)
+    res.send('You successfully logged in!')
+    // res.render('pages/profile.ejs', {
+    //   name: req.user.displayName,
+    //   pic: req.user._json.picture,
+    //   email: req.user.emails[0].value,
+    //   profile: "google"
+    // })
+  })
+
+  /////////////////////////// GOOOOGLE AUTH ENDS ///////////////////////////
+
 
   // Error handling middleware
   app.use((err, req, res, next) => {

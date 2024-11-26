@@ -95,6 +95,7 @@ const authOperations = {
         last_login: new Date(),
         created_at: new Date(),
         updated_at: new Date(),
+        is_deleted: false,
         verified: !authConfig.verify_signup
       };
 
@@ -112,6 +113,8 @@ const authOperations = {
             code,
             type: 'signup',
             method,
+            used: false,
+            
             expires_at: new Date(Date.now() + authConfig.otp_expiry * 60000),
             created_at: new Date(),
             updated_at: new Date()
@@ -153,7 +156,7 @@ const authOperations = {
       }
     });
 
-    if (!user) throw new Error('Invalid credentials');
+    if (!user) throw new Error('Invalid credentials 1');
 
     if (user.locked_until && user.locked_until > new Date()) {
       throw new Error(`Account locked. Try again after ${user.locked_until}`);
@@ -175,7 +178,7 @@ const authOperations = {
         data: updates
       });
       
-      throw new Error('Invalid credentials');
+      throw new Error('Invalid credentials 2');
     }
 
     await prisma.users.update({
@@ -196,6 +199,7 @@ const authOperations = {
           code,
           type: 'login',
           method,
+          used: false,
           expires_at: new Date(Date.now() + authConfig.otp_expiry * 60000),
           created_at: new Date(),
           updated_at: new Date()
@@ -217,22 +221,29 @@ const authOperations = {
     const tokens = generateTokens(user);
     return createAuthResponse(user, tokens);
   },
+  
 
   verify: async (prisma, data) => {
+    const query = {
+      user_id: data.user_id,
+      code: data.code,
+      type: data.type,
+      used: false,
+      expires_at: { gt: new Date() }
+    };
+  
+    console.log(query);
     const otpRecord = await prisma.otp_codes.findFirst({
-      where: {
-        user_id: data.user_id,
-        code: data.code,
-        type: data.type,
-        used: false,
-        expires_at: { gt: new Date() }
-      },
-      include: { user: true }
+      where: query
     });
 
     if (!otpRecord) {
       throw new Error('Invalid or expired verification code');
     }
+    // else{
+    //   console.log('otpRecord', otpRecord);
+    //   return { success: true, res: otpRecord };
+    // }
 
     await prisma.otp_codes.update({
       where: { id: otpRecord.id },
@@ -246,9 +257,12 @@ const authOperations = {
         verified_at: new Date()
       }
     });
+    const user = await prisma.users.findFirst({
+      where: { id: data.user_id }
+    });
 
-    const tokens = generateTokens(otpRecord.user);
-    return createAuthResponse(otpRecord.user, tokens);
+    const tokens = generateTokens(user);
+    return createAuthResponse(user, tokens);
   },
 
   refresh: async (prisma, refreshToken) => {
@@ -286,6 +300,7 @@ const authOperations = {
         code,
         type: 'reset',
         method: 'email',
+        used: false,
         expires_at: new Date(Date.now() + authConfig.otp_expiry * 60000),
         created_at: new Date(),
         updated_at: new Date()

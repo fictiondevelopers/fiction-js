@@ -1,8 +1,18 @@
 require('dotenv').config();
 
+/**
+ * Authentication configuration object
+ * @property {boolean} verify_login - If true, requires OTP verification on each login
+ * @property {boolean} verify_signup - If true, requires OTP verification on signup
+ * @property {string} default_role - Default role assigned to new users
+ * @property {number} otp_length - Length of generated OTP codes
+ * @property {number} otp_expiry - Minutes until OTP codes expire
+ * @property {Object} smtp - SMTP configuration for email OTP delivery
+ * @property {Object} twilio - Twilio configuration for SMS OTP delivery
+ */
 let authConfig = {
-  verify_login: false,
-  verify_signup: true,
+  verify_login: false, // Enable OTP verification on login
+  verify_signup: false,
   default_role: 'user',
   otp_length: parseInt(process.env.OTP_LENGTH) || 6,
   otp_expiry: parseInt(process.env.OTP_EXPIRY) || 5,
@@ -30,4 +40,4 @@ const configure = (config) => {
   }
 };
 
-module.exports = { configure, authConfig }; 
+module.exports = { configure, authConfig };
