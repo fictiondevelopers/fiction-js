@@ -14,6 +14,7 @@ const { schemasDB } = require('./db-structure');
 const passport = require('passport');
 const session = require('express-session')
 require('./../passport-setup')
+const cookieParser = require('cookie-parser');
 
 
 async function initializeDatabase() {
@@ -45,7 +46,7 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-
+  app.use(cookieParser());
 
   // social auth
   app.use(session({
@@ -129,7 +130,16 @@ async function startServer() {
 
   app.get('/auth/google', (req, res) => {
     // Store return URL in session before authentication
-    req.session.returnUrl = req.query.return_url;
+    if (!req.session) {
+      req.session = {};
+    }
+    // Store return URL in a cookie instead of session
+    res.cookie('returnUrl', req.query.return_url, {
+      maxAge: 5 * 60 * 1000, // 5 minutes
+      httpOnly: true
+    });
+    console.log("Google auth - Initial return_url:", req.query.return_url);
+    console.log("Google auth - Cookie return_url set");
     passport.authenticate('google', { scope: ['profile', 'email'] })(req, res);
   });
 
@@ -137,11 +147,9 @@ async function startServer() {
     passport.authenticate('google', { failureRedirect: '/failed' }),
     async (req, res) => {
       try {
-        // Get user data from Google profile
         const googleUser = req.user._json;
         
-        // Call social connect operation
-        const result = await authOperations.socialConnect({
+        const result = await authOperations.socialConnect(prisma, {
           first_name: googleUser.given_name,
           last_name: googleUser.family_name,
           social_id: googleUser.sub,
@@ -149,17 +157,22 @@ async function startServer() {
           picture_url: googleUser.picture
         });
 
-        // Get stored return URL
-        const returnUrl = req.session.returnUrl || '/';
-        delete req.session.returnUrl;
+        // Get return URL from cookie with a default fallback
+        const returnUrl = req.cookies.returnUrl || 'https://fictiondevelopers.com';
+        
+        // Clear the cookie
+        res.clearCookie('returnUrl');
 
         // Redirect with access token
-        res.redirect(`${returnUrl}?access_token=${result.accessToken}`);
+        const redirectUrl = `${returnUrl}${returnUrl.includes('?') ? '&' : '?'}access_token=${result?.res?.accessToken}`;
+        res.redirect(redirectUrl);
+        
       } catch (error) {
         console.error('Social connect error:', error);
         res.redirect('/failed');
       }
-    });
+    }
+  );
 
   app.get('/failed', (req, res) => res.send('Failed to authenticate with Google'));
 
