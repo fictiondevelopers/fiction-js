@@ -1,4 +1,6 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 /**
  * Authentication configuration object
@@ -40,4 +42,4 @@ const configure = (config) => {
   }
 };
 
-module.exports = { configure, authConfig };
+export { configure, authConfig };

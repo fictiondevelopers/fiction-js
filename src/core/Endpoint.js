@@ -1,4 +1,4 @@
-class Endpoint {
+export default class Endpoint {
   constructor(path) {
     this.path = path;
     this.handlers = new Map();
@@ -78,5 +78,3 @@ class Endpoint {
 
 // Helper function to create endpoints
 const endpoint = (path) => new Endpoint(path);
-
-module.exports = endpoint; 

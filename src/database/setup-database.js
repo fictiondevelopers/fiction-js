@@ -1,8 +1,7 @@
-const Joi = require('joi');
-const fs = require('fs').promises;
-const path = require('path');
-const { exec } = require('child_process');
-const util = require('util');
+import fs from 'fs';
+import path from 'path';
+import { exec } from 'child_process';
+import util from 'util';
 const execAsync = util.promisify(exec);
 
 // Type mapping from Joi to Prisma
@@ -131,4 +130,4 @@ class DatabaseSetup {
   }
 }
 
-module.exports = DatabaseSetup; 
+export default DatabaseSetup; 

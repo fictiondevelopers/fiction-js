@@ -1,5 +1,5 @@
-const Joi = require('joi');
-const { schemasDB } = require('../../apis/db-structure');
+import Joi from 'joi';
+import { schemasDB } from '../../apis/db-structure.js';
 
 /**
  * Generic validation function for any model
@@ -70,4 +70,4 @@ const validateModel = async (modelName, data, fields = null) => {
   }
 };
 
-module.exports = { validateModel };
+export  default  validateModel

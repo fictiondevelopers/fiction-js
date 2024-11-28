@@ -1,6 +1,6 @@
-const passport  = require('passport');
-require('dotenv').config();
-const GoogleStrategy = require('passport-google-oauth2').Strategy;
+import passport  from 'passport';
+import dotenv from 'dotenv';
+import GoogleStrategy from 'passport-google-oauth2';
 // const LinkedinStrategy = require('passport-linkedin-oauth2').Strategy;
 // const facebookStrategy = require('passport-facebook').Strategy;
 // const twitterStrategy = require('passport-twitter').Strategy;

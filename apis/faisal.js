@@ -1,25 +1,19 @@
-const e = require("../src/core/EndpointsTransformer.js");
+// const e = require("../src/core/EndpointsTransformer.js");
 
-// let apis = []
+import Endpoint from "../src/core/EndpointsTransformer.js";
 
-// apis.push(
-// e("products")
-// .start()
-// .filter(["name"])
-// .filter(["sku"]) 
-// .get()
-// .end()
-// .return(200)
-// );
+let apis = []
 
-// apis.push(
-// e("products/all")
-// .start()
-// .get()
-// .end()
-// .return(200)
-// );
+const e = new Endpoint("products")
+e.start()
+e.filter(["name"])
+e.filter(["sku"]) 
+e.get()
+e.end()
+e.return(200)
+
+apis.push(e)
+
 
 export const apiRoutes = apis;
 
-module.exports = { apiRoutes: apis };

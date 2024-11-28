@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-class Endpoint {
+export default class Endpoint {
 
 
     constructor(path){
@@ -249,4 +249,4 @@ class Endpoint {
 
 }
 
-export const e = (p)=>new Endpoint(p)
+

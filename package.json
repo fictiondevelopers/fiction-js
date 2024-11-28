@@ -27,5 +27,7 @@
     "init": "node scripts/setup.js",
     "start": "node apis/server.js",
     "dev": "npx prisma generate && npx prisma migrate deploy && nodemon apis/server.js"
-  }
+  },
+  "type": "module"
+
 }

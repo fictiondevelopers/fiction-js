@@ -1,5 +1,5 @@
-const Joi = require('joi');
-const { PrismaClient } = require('@prisma/client');
+import Joi from 'joi';
+import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Define custom parameters for field attributes
@@ -78,4 +78,4 @@ const schemasDB = {
   }
 };
 
-module.exports = { schemasDB, fieldAttributes };
+export { schemasDB, fieldAttributes };

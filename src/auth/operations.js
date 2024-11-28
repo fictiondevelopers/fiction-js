@@ -1,9 +1,9 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const nodemailer = require('nodemailer');
-const twilio = require('twilio');
-const { authConfig } = require('../../apis/config');
-const { validateModel } = require('../core/validation');
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
+import nodemailer from 'nodemailer';
+import twilio from 'twilio';
+import { authConfig } from '../../apis/config.js';
+import validateModel from '../core/validation.js';
 
 
 const generateOTP = (length = 6) => {
@@ -395,4 +395,4 @@ const authOperations = {
   }
 };
 
-module.exports = { authOperations }; 
+export default { authOperations }; 
