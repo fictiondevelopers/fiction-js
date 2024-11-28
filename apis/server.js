@@ -17,6 +17,7 @@ import session from 'express-session';
 import './../passport-setup.js';
 import cookieParser from 'cookie-parser';
 import { apiRoutes } from './faisal.js';
+import Endpoint from '../src/core/EndpointsTransformer.js';
 
 
 async function initializeDatabase() {
@@ -37,7 +38,7 @@ async function startServer() {
   configure({
     auth: {
       verify_login: false,
-      verify_signup: true
+      verify_signup: false
     }
   });
 
@@ -206,18 +207,25 @@ async function startServer() {
   //////////////////////////////////////////////// API Routes ////////////////////////////////////////
   //////////////////////////////////////////////// API Routes ////////////////////////////////////////
   //////////////////////////////////////////////// API Routes ////////////////////////////////////////
-  apiRoutes.forEach(endpoint => {
-    console.log(endpoint.method)
-    app[endpoint.method || 'get']("/"+endpoint.path, async (req, res) => {
-        console.log("I reached here")
+  apiRoutes.forEach(endpointTemplate => {
+    app[endpointTemplate.method || 'get']("/" + endpointTemplate.path, async (req, res) => {
         try {
+            // Create a new instance for each request
+            const endpoint = new Endpoint(endpointTemplate.path, endpointTemplate.method);
+            // Copy over any necessary configuration from the template
+            endpoint.method = endpointTemplate.method;
+            endpoint.histories = [...endpointTemplate.histories];
+
+            console.log("histories to fire up ==== ");
+            endpoint.histories.map(h=>console.log(h));
+            console.log("end");
+            
             await endpoint.handle(req, res);
         } catch (error) {
             console.error('Error handling request:', error);
             res.status(500).json({ error: 'Internal server error' });
         }
     });
-      
   });
   //////////////////////////////////////////////// API Routes ////////////////////////////////////////
   //////////////////////////////////////////////// API Routes ////////////////////////////////////////

@@ -73,7 +73,7 @@ const schemasDB = {
       price: Joi.number().required(),
       description: Joi.string(),
       user_id: Joi.number().integer(),
-      created_at: Joi.date().default('now').required()
+      created_at: Joi.date().default('now')
     })
   }
 };

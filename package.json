@@ -26,7 +26,8 @@
     "setup": "cd src && npm install && cd .. && npm install",
     "init": "node scripts/setup.js",
     "start": "node apis/server.js",
-    "dev": "npx prisma generate && npx prisma migrate deploy && nodemon apis/server.js"
+    "devdb": "npx prisma generate && npx prisma migrate deploy && nodemon apis/server.js",
+    "dev": "nodemon apis/server.js"
   },
   "type": "module"
 

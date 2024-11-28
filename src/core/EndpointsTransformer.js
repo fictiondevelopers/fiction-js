@@ -8,8 +8,9 @@ const prisma = new PrismaClient();
 export default class Endpoint {
 
 
-    constructor(path){
+    constructor(path, method="get"){
         this.path = path;
+        this.method = method;
 
 
         this.where = [];
@@ -25,7 +26,6 @@ export default class Endpoint {
         this.filters = [];
         this.pagination = [];
 
-        this.method = "get";
         this.data = null;
         this.model =  this.path.split("/")[0].toLowerCase();
 
@@ -44,27 +44,45 @@ export default class Endpoint {
     /////// build packs ////
 
     start(){
+        const iii = {auth:true,me:false};
         const uuid = uuidv4();
         const newHistory = {
             id:uuid,
             started:true,
             completed:false,
-            mine:false,
+            mine:iii.me,
             history:[]
         }
 
         this.histories.push(newHistory);
         this.activeHistory = uuid;
-        this.meMode = false;
+        this.meMode = iii.me;
+        console.log("meModeCHanged",this.meMode);
         this.where = [];
         this.select = [];
         this.orderBy = [];
         this.limit = 10;
         this.offset = 0;
         this.filters = [];
-        
 
-        console.log("when the api starts", this.where);
+        this.histories.find(h=>h.id==this.activeHistory).history.push({
+            type:"start",
+            input:iii
+        });
+        
+        if(iii.auth){
+            this.histories.find(h=>h.id==this.activeHistory).history.push({
+                type:"auth",
+                input:{}
+            });
+        }
+
+        if(iii.me){
+            this.histories.find(h=>h.id==this.activeHistory).history.push({
+                type:"mine",
+                input:{}
+            });
+        }
 
 
         return this;
@@ -78,7 +96,10 @@ export default class Endpoint {
     }
 
     mera(){
-        this.histories.find(h=>h.id==this.activeHistory).mine = true;
+        this.histories.find(h=>h.id==this.activeHistory).history.push({
+            type:"mine",
+            input:{}
+        });
         this.meMode = true;
         return this;
     }
@@ -155,6 +176,10 @@ export default class Endpoint {
     }
 
     end(){
+        this.histories.find(h=>h.id==this.activeHistory).history.push({
+            type:"end",
+            input:{}
+        });
         this.histories.find(h=>h.id==this.activeHistory).completed = true;
         return this;
     }
@@ -181,9 +206,21 @@ export default class Endpoint {
 
     ///////////// execute /////////////
 
+    async cleanUp_execute(iii){
+        this.meMode = false;
+        this.where = [];
+        this.select = [];
+        this.orderBy = [];
+        this.limit = 10;
+        this.offset = 0;
+        this.filters = [];
+    }
+
     async auth_execute(){
 
-        const {success, res} = await authOperations.auth_me(prisma,this.input?.headers?.authorization);
+        const breaerToken = this.input?.headers?.authorization?.split(" ")[1];
+
+        const {success, res} = await authOperations.auth_me(prisma,breaerToken);
         if(!success){
             this.statusCode = 401;
             this.data = {error:res};
@@ -195,6 +232,7 @@ export default class Endpoint {
     }
 
     async mine_execute(){
+        this.meMode = true;
         if(!this.authenticated){
             return false;
         }
@@ -204,7 +242,14 @@ export default class Endpoint {
 
     async validate_execute(i={}){
 
-        const {error, value} = await validateModel(this.model,this.input.body)
+        let data = this.input.body;
+        if(i.id && i.id=="auto"){
+            data = {...this.input.body, id:50};
+        }
+
+        console.log("SFT: data sent for validation",data);
+
+        const {error, value} = await validateModel(this.model,data)
 
         if(error){
             this.statusCode = 400;
@@ -228,7 +273,7 @@ export default class Endpoint {
             console.log("SFT: Filters after query assignment:", this.filters);
             this.filters = Object.entries(this.filters).map(([key, value]) => {
                 console.log("SFT: Converting entry:", key, value);
-                return {[key]: value};
+                return {[key]: value || "gublomoteory"};
             });
             console.log("SFT: Filters after conversion:", this.filters);
         }else{
@@ -237,7 +282,7 @@ export default class Endpoint {
                 console.log("SFT: Query exists, mapping custom filters");
                 this.filters = Cf.map(f=>{
                     console.log("SFT: Mapping filter:", f, "Value:", this.query[f]);
-                    return {[f]:this.query[f]};
+                    return {[f]:this.query[f] || "gublomoteory"};
                 });
                 console.log("SFT: Filters after mapping:", this.filters);
             }else{
@@ -264,7 +309,7 @@ export default class Endpoint {
 
     
 
-    async get_execute(){
+    async get_execute(i={}){
 
         let q = {}
 
@@ -288,30 +333,83 @@ export default class Endpoint {
             q.take = this.limit;
         }
 
+        if(i.limit){
+            q.take = i.limit;
+        }
+
         if(this.offset>0){
             q.skip = this.offset;
+        }
+
+        if(i.offset){
+            q.skip = i.offset;
         }
 
         console.log("SFT: q",q);
 
        
 
-        this.data = await prisma[this.model].findMany(q);
-        // this.data = [{id:1,name:"lol"}]
+        // Get total count
+        const total = await prisma[this.model].count({
+            where: q.where
+        });
+
+        // Get paginated results
+        const results = await prisma[this.model].findMany(q);
+
+        // Calculate pagination metadata
+        const page = Math.floor((q.skip || 0) / (q.take || 10)) + 1;
+        const pageSize = q.take || 10;
+        const totalPages = Math.ceil(total / pageSize);
+        const hasMore = page < totalPages;
+        const remaining = Math.max(0, total - (page * pageSize));
+
+        this.data = {
+            data:results,
+            pagination: {
+                total,
+                page,
+                pageSize,
+                totalPages,
+                hasMore,
+                remaining
+            }
+        };
         return this;
     }
 
-    async create_execute(d){
+    async create_execute(i={}){
+
+        console.log("meeeeeeeeeeeeeeeeeeeeeeeeeeeee mode", this.meMode);
+
+        let input_data = this.input.body;
 
         if(this.meMode){
-            d.user_id = this.meUser.id;
+            input_data.user_id = this.meUser.id;
+        }
+        let data_to_create = {
+            ...input_data,
+            created_at:new Date(),
         }
 
-        this.data = await prisma[this.model].create(d);
+        if(this.meMode && !this.authenticated){
+            this.statusCode = 401;
+            this.data = {error:"Unauthorized"};
+            return false
+        }
+
+        if(this.meMode){
+            data_to_create.user_id = this.meUser.id;
+        }
+        const create_data = {
+            data:data_to_create
+        }
+
+        this.data = await prisma[this.model].create(create_data);
         return this;
     }
 
-    async update_execute(d){
+    async update_execute(i={}){
 
         let q = {}
         if(this.where.length>0){
@@ -341,7 +439,8 @@ export default class Endpoint {
     async return_execute(code=200){
         this.statusCode = code;
         this.histories = [];
-        this?.output?.status(this.statusCode)?.send(this.data);
+        console.log("status code",this.statusCode);
+        this?.output?.status(this.statusCode!={} && this.statusCode>0 ? this.statusCode  : 200)?.send(this.data);
         return this;
     }
 
@@ -351,6 +450,13 @@ export default class Endpoint {
     ///////////// executer /////////////
     async execute(){
         
+        console.log("SFT: step 2");
+        console.log("SFT: this.histories",this.histories);
+
+        if(this.histories.length==0){
+            this.return_execute(400);
+            return;
+        }
 
         for(let i=0; i<this.histories.length; i++){
             const history = this.histories[i];
@@ -363,11 +469,16 @@ export default class Endpoint {
                 console.log(`FJS: step #${j}`);
 
 
+                if(step.type=="start"){
+                    this.cleanUp_execute(step.input)
+                }
+
+
                 if(step.type=="auth"){
                     console.log(`FJS: step #${j} auth`);
                     const authSuccess = await this.auth_execute();
                     if(!authSuccess){
-                        await this.return_execute(step.input);
+                        await this.return_execute(401);
                         return;
                     }
                 }
@@ -376,7 +487,7 @@ export default class Endpoint {
                     console.log(`FJS: step #${j} mine`);
                     const mineSuccess = await this.mine_execute();
                     if(!mineSuccess){
-                        await this.return_execute(step.input);
+                        await this.return_execute(401);
                         return;
                     }
                 }
@@ -388,17 +499,21 @@ export default class Endpoint {
 
                 if(step.type=="get"){
                     console.log(`FJS: step #${j} get`);
-                    await this.get_execute();
+                    await this.get_execute(step.input);
                 }
 
                 if(step.type=="create"){
                     console.log(`FJS: step #${j} create`);
-                    await this.create_execute();
+                    const createSuccess = await this.create_execute(step.input);
+                    if(!createSuccess){
+                        await this.return_execute(400);
+                        return;
+                    }
                 }
 
                 if(step.type=="update"){
                     console.log(`FJS: step #${j} update`);
-                    await this.update_execute();
+                    await this.update_execute(step.input);
                 }
 
                 if(step.type=="delete"){
@@ -408,9 +523,9 @@ export default class Endpoint {
 
                 if(step.type=="validate"){
                     console.log(`FJS: step #${j} validate`);
-                    const isValid =await this.validate_execute();
+                    const isValid =await this.validate_execute(step.input);
                     if(!isValid){
-                        await this.return_execute(step.input);
+                        await this.return_execute(400);
                         return;
                     }
                 }
@@ -438,14 +553,14 @@ export default class Endpoint {
 
 
     //////////master/////
-    async handle(req,res){
+    async handle(req, res) {
+        // Continue with request handling
         this.input = req;
         this.query = this.getQuery(this.input);
         this.output = res;
+        console.log("SFT: step 1");
 
         await this.execute();
-
-        // this.return();
     }
     //////////master/////
 

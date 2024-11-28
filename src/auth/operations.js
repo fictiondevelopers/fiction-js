@@ -78,6 +78,7 @@ const createAuthResponse = (user, tokens) => {
 
 const authOperations = {
   signup: async (prisma, data) => {
+
     try {
       const validatedData = await validateModel('users', data, [
         'email',
@@ -105,6 +106,7 @@ const authOperations = {
       });
 
       if (authConfig.verify_signup) {
+        console.log("verify_signup", authConfig.verify_signup);
         const code = generateOTP(authConfig.otp_length);
         const method = data.otp_method || 'email';
 
@@ -132,6 +134,8 @@ const authOperations = {
             requires_verification: true
           }
         };
+      }else{
+        console.log("verification email was turned off")
       }
 
       const tokens = generateTokens(user);
@@ -224,11 +228,15 @@ const authOperations = {
   },
 
   auth_me: async (prisma, token) => {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await prisma.users.findFirst({
+    try{
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await prisma.users.findFirst({
       where: { id: decoded.id }
     });
-    return { success: true, res: user };
+      return { success: true, res: user };
+    } catch (error) {
+      return { success: false, res: "Invalid token" };
+    }
   },
   
 
