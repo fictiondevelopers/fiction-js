@@ -1,19 +1,24 @@
-// const e = require("../src/core/EndpointsTransformer.js");
+import EndpointManager from "../src/core/EndpointManager.js";
 
-import Endpoint from "../src/core/EndpointsTransformer.js";
+// Create an instance of the EndpointManager
+const e = new EndpointManager();
 
-let apis = []
+// Register the "products" API route
+e.register("products")
+    .start()
+    .filter(["name"])
+    .filter(["sku"])
+    .get()
+    .end()
+    .return(200);
 
-const e = new Endpoint("products")
-e.start()
-e.filter(["name"])
-e.filter(["sku"]) 
-e.get()
-e.end()
-e.return(200)
+// Register the "users" API route
+e.register("users")
+    .start()
+    .filter(["email"])
+    .get()
+    .end()
+    .return(200);
 
-apis.push(e)
-
-
-export const apiRoutes = apis;
-
+// Now you can access all registered routes from `e.apis`
+export const apiRoutes = e.getAll();

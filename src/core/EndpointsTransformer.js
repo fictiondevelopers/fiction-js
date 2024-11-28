@@ -48,7 +48,7 @@ export default class Endpoint {
 
         this.histories.push(newHistory);
         this.activeHistory = uuid;
-        return uuid;
+        return this;
     }
 
     filter(i=[]){
@@ -183,7 +183,7 @@ export default class Endpoint {
 
     return_execute(code=200){
         this.statusCode = code;
-        this?.output?.send(this.data,this.statusCode);
+        this?.output?.status(this.statusCode)?.send(this.data);
         return this;
     }
 
