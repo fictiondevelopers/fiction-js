@@ -1,5 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from '@prisma/client';
+import validateModel from '../core/validation.js';
+import authOperations from '../auth/operations.js';
 
 const prisma = new PrismaClient();
 
@@ -31,6 +33,10 @@ export default class Endpoint {
         this.histories = []
         this.activeHistory = null;
         this.statusCode = 200;
+        this.meUser = null;
+        this.authenticated = false;
+
+        this.meMode = false;
     }
 
 
@@ -43,11 +49,37 @@ export default class Endpoint {
             id:uuid,
             started:true,
             completed:false,
+            mine:false,
             history:[]
         }
 
         this.histories.push(newHistory);
         this.activeHistory = uuid;
+        this.meMode = false;
+        this.where = [];
+        this.select = [];
+        this.orderBy = [];
+        this.limit = 10;
+        this.offset = 0;
+        this.filters = [];
+        
+
+        console.log("when the api starts", this.where);
+
+
+        return this;
+    }
+    auth(){
+        this.histories.find(h=>h.id==this.activeHistory).history.push({
+            type:"auth",
+            input:{}
+        });
+        return this;
+    }
+
+    mera(){
+        this.histories.find(h=>h.id==this.activeHistory).mine = true;
+        this.meMode = true;
         return this;
     }
 
@@ -67,12 +99,59 @@ export default class Endpoint {
         return this;
     }
 
+    // TODO: create
+    // TODO: update
+    // TODO: delete
+    // TODO: join
+    // TODO: upload
+    // TODO: multi select in one query
+
+    validate(i={}){
+        this.histories.find(h=>h.id==this.activeHistory).history.push({
+            type:"validate",
+            input:i
+        });
+        return this;
+    }
+
+    create(i={}){
+        this.histories.find(h=>h.id==this.activeHistory).history.push({
+            type:"create",
+            input:i
+        });
+        return this;
+    }
+
+    update(i={by:["id"]}){
+        this.histories.find(h=>h.id==this.activeHistory).history.push({
+            type:"update",
+            input:i
+        });
+        return this;
+    }
+
+    delete(i={}){
+        this.histories.find(h=>h.id==this.activeHistory).history.push({
+            type:"delete",
+            input:i
+        });
+        return this;
+    }
+
+    // join(i={}){
+    //     this.histories.find(h=>h.id==this.activeHistory).history.push({
+    //         type:"join",
+    //         input:i
+    //     });
+    //     return this;
+    // }
+
     return(i={}){
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"return",
             input:i
         });
-        return this;
+        // return null; // to disable chaining after return has been called
     }
 
     end(){
@@ -86,7 +165,12 @@ export default class Endpoint {
         const queryObject =  input.query;
         console.log("SFT: queryObject",queryObject);
         return queryObject;
-     }
+    }
+
+    shouldVaildate(){
+        const validateFound = this.histories.find(h=>h.id==this.activeHistory).history.find(h=>h.type=="validate");
+        return validateFound?true:false;
+    }
     // custom helper functions //
 
 
@@ -97,7 +181,43 @@ export default class Endpoint {
 
     ///////////// execute /////////////
 
-    filter_execute(Cf=[]){
+    async auth_execute(){
+
+        const {success, res} = await authOperations.auth_me(prisma,this.input?.headers?.authorization);
+        if(!success){
+            this.statusCode = 401;
+            this.data = {error:res};
+            return false;
+        }
+        this.meUser = res;
+        this.authenticated = true;
+        return this;
+    }
+
+    async mine_execute(){
+        if(!this.authenticated){
+            return false;
+        }
+        this.where.push({user_id:this.meUser.id})
+        return this;
+    }
+
+    async validate_execute(i={}){
+
+        const {error, value} = await validateModel(this.model,this.input.body)
+
+        if(error){
+            this.statusCode = 400;
+            this.data = {error:error.details[0].message};
+            return false
+        }
+
+        return true;
+    }
+
+    async filter_execute(Cf=[]){
+
+        console.log("when the function starts", this.where);
 
         console.log("SFT: Input Cf:", Cf);
         console.log("SFT: Initial this.query:", this.query);
@@ -135,7 +255,7 @@ export default class Endpoint {
         console.log("SFT: this.filters",this.filters);
 
         
-        this.where = [...this.where, ...this.filters]
+        this.where = [...this.where].concat(this.filters)
 
         console.log("SFT: this.where finallll",this.where);
 
@@ -181,8 +301,46 @@ export default class Endpoint {
         return this;
     }
 
-    return_execute(code=200){
+    async create_execute(d){
+
+        if(this.meMode){
+            d.user_id = this.meUser.id;
+        }
+
+        this.data = await prisma[this.model].create(d);
+        return this;
+    }
+
+    async update_execute(d){
+
+        let q = {}
+        if(this.where.length>0){
+            q.where = this.where.reduce((acc, curr) => {
+                return { ...acc, ...curr };
+            }, {});
+        }
+
+        q.data = this.input.body;
+        this.data = await prisma[this.model].update(q);
+        return this;
+    }
+
+    async delete_execute(d){
+        let q = {}
+        if(this.where.length>0){
+            q.where = this.where.reduce((acc, curr) => {
+                return { ...acc, ...curr };
+            }, {});
+        }
+
+        q.data = this.input.body;
+        this.data = await prisma[this.model].delete(q);
+        return this;
+    }
+
+    async return_execute(code=200){
         this.statusCode = code;
+        this.histories = [];
         this?.output?.status(this.statusCode)?.send(this.data);
         return this;
     }
@@ -204,6 +362,25 @@ export default class Endpoint {
                 const step = steps[j];
                 console.log(`FJS: step #${j}`);
 
+
+                if(step.type=="auth"){
+                    console.log(`FJS: step #${j} auth`);
+                    const authSuccess = await this.auth_execute();
+                    if(!authSuccess){
+                        await this.return_execute(step.input);
+                        return;
+                    }
+                }
+
+                if(step.type=="mine"){
+                    console.log(`FJS: step #${j} mine`);
+                    const mineSuccess = await this.mine_execute();
+                    if(!mineSuccess){
+                        await this.return_execute(step.input);
+                        return;
+                    }
+                }
+
                 if(step.type=="filter"){
                     console.log(`FJS: step #${j} filter`,step.filters);
                     await this.filter_execute(step.input);
@@ -214,10 +391,35 @@ export default class Endpoint {
                     await this.get_execute();
                 }
 
+                if(step.type=="create"){
+                    console.log(`FJS: step #${j} create`);
+                    await this.create_execute();
+                }
+
+                if(step.type=="update"){
+                    console.log(`FJS: step #${j} update`);
+                    await this.update_execute();
+                }
+
+                if(step.type=="delete"){
+                    console.log(`FJS: step #${j} delete`);
+                    await this.delete_execute();
+                }
+
+                if(step.type=="validate"){
+                    console.log(`FJS: step #${j} validate`);
+                    const isValid =await this.validate_execute();
+                    if(!isValid){
+                        await this.return_execute(step.input);
+                        return;
+                    }
+                }
+
                 if(step.type=="return"){
                     console.log(`FJS: step #${j} return`);
                     await this.return_execute(step.input);
                 }
+
             }
 
 

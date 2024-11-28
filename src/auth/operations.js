@@ -222,6 +222,14 @@ const authOperations = {
     const tokens = generateTokens(user);
     return createAuthResponse(user, tokens);
   },
+
+  auth_me: async (prisma, token) => {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await prisma.users.findFirst({
+      where: { id: decoded.id }
+    });
+    return { success: true, res: user };
+  },
   
 
   verify: async (prisma, data) => {
@@ -395,4 +403,4 @@ const authOperations = {
   }
 };
 
-export default { authOperations }; 
+export default authOperations 
