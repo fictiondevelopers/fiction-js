@@ -1,4 +1,3 @@
-
 class Endpoint {
   constructor(path) {
     this.path = path;

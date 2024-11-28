@@ -19,13 +19,13 @@
     "passport": "^0.7.0",
     "passport-facebook": "^3.0.0",
     "passport-google-oauth2": "^0.2.0",
-    "twilio": "^5.3.6"
+    "twilio": "^5.3.6",
+    "uuid": "^11.0.3"
   },
   "scripts": {
     "setup": "cd src && npm install && cd .. && npm install",
     "init": "node scripts/setup.js",
     "start": "node apis/server.js",
     "dev": "npx prisma generate && npx prisma migrate deploy && nodemon apis/server.js"
-
   }
 }
