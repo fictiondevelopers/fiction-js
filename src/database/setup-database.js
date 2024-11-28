@@ -99,35 +99,35 @@ class DatabaseSetup {
   }
 
   async setup() {
-    try {
-      console.log('Creating Prisma schema at:', this.prismaDir);
-      await fs.mkdir(this.prismaDir, { recursive: true });
+    // try {
+    //   console.log('Creating Prisma schema at:', this.prismaDir);
+    //   await fs.mkdir(this.prismaDir, { recursive: true });
       
-      const schema = this.generateSchema();
-      const schemaPath = path.join(this.prismaDir, 'schema.prisma');
-      await fs.writeFile(schemaPath, schema);
-      console.log('Schema file written to:', schemaPath);
+    //   const schema = this.generateSchema();
+    //   const schemaPath = path.join(this.prismaDir, 'schema.prisma');
+    //   await fs.writeFile(schemaPath, schema);
+    //   console.log('Schema file written to:', schemaPath);
 
-      // clear all tables
-      // await execAsync('npx prisma migrate reset');
+    //   // clear all tables
+    //   // await execAsync('npx prisma migrate reset');
 
-      console.log('Generating Prisma client...');
-      await execAsync('npx prisma generate');
+    //   console.log('Generating Prisma client...');
+    //   await execAsync('npx prisma generate');
       
-      // Add this line to ensure Prisma client is properly initialized
-      const { PrismaClient } = require('@prisma/client');
-      console.log('Prisma client initialized');
+    //   // Add this line to ensure Prisma client is properly initialized
+    //   const { PrismaClient } = require('@prisma/client');
+    //   console.log('Prisma client initialized');
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('Running database migrations...');
-        await execAsync('npx prisma migrate dev --name init');
-      }
+    //   if (process.env.NODE_ENV !== 'production') {
+    //     console.log('Running database migrations...');
+    //     await execAsync('npx prisma migrate dev --name init');
+    //   }
 
-      console.log('Database setup completed successfully!');
-    } catch (error) {
-      console.error('Database setup failed:', error);
-      throw error;
-    }
+    //   console.log('Database setup completed successfully!');
+    // } catch (error) {
+    //   console.error('Database setup failed:', error);
+    //   throw error;
+    // }
   }
 }
 

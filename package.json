@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "bcrypt": "^5.1.1",
     "cookie-parser": "^1.4.7",
     "cookie-session": "^2.1.0",
     "cors": "^2.8.5",
@@ -13,13 +14,18 @@
     "express": "^4.18.2",
     "express-session": "^1.18.1",
     "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.16",
     "passport": "^0.7.0",
     "passport-facebook": "^3.0.0",
-    "passport-google-oauth2": "^0.2.0"
+    "passport-google-oauth2": "^0.2.0",
+    "twilio": "^5.3.6"
   },
   "scripts": {
     "setup": "cd src && npm install && cd .. && npm install",
     "init": "node scripts/setup.js",
-    "start": "node apis/server.js"
+    "start": "node apis/server.js",
+    "dev": "npx prisma generate && npx prisma migrate deploy && nodemon apis/server.js"
+
   }
 }
