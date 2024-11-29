@@ -9,7 +9,6 @@ import cors from 'cors';
 import authOperations  from '../src/auth/operations.js';
 import endpoint from '../src/core/Endpoint.js';
 import { configure } from './config.js';
-import { PrismaClient } from '@prisma/client';
 import DatabaseSetup from '../src/database/setup-database.js';
 import { schemasDB } from './db-structure.js';
 import passport from 'passport';
@@ -18,7 +17,7 @@ import './../passport-setup.js';
 import cookieParser from 'cookie-parser';
 import { apiRoutes } from './faisal.js';
 import Endpoint from '../src/core/EndpointsTransformer.js';
-
+import {prisma} from './PrismaConfig.js';
 
 async function initializeDatabase() {
   try {
@@ -43,7 +42,7 @@ async function startServer() {
   });
 
   const app = express();
-  const prisma = new PrismaClient();
+  // const prisma = new PrismaClient();
 
   // Middleware
   app.use(cors());
@@ -211,7 +210,7 @@ async function startServer() {
     app[endpointTemplate.method || 'get']("/" + endpointTemplate.path, async (req, res) => {
         try {
             // Create a new instance for each request
-            const endpoint = new Endpoint(endpointTemplate.path, endpointTemplate.method);
+            const endpoint = new Endpoint(endpointTemplate.path, prisma, endpointTemplate.method);
             // Copy over any necessary configuration from the template
             endpoint.method = endpointTemplate.method;
             endpoint.histories = [...endpointTemplate.histories];

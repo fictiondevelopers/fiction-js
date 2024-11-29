@@ -1,9 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import { PrismaClient } from '@prisma/client';
 import validateModel from '../core/validation.js';
 import authOperations from '../auth/operations.js';
-
-const prisma = new PrismaClient();
+import {prisma} from '../../apis/PrismaConfig.js';
 
 export default class Endpoint {
 

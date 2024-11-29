@@ -21,15 +21,15 @@ e.register("products")
     // .end()
     // .return(200);
 
-    // e.register("products/update")
-    // .start()
-    // // .auth()
-    // // .mine()
-    // .filter(["id"])
-    // // .update({by:["id"]})
-    // .update()
-    // .end()
-    // .return(200);
+    e.register("products/update")
+    .start()
+    .auth()
+    .mera()
+    .filter(["id"])
+    // .update({by:["id"]})
+    .update()
+    .end()
+    .return(200);
 
 
 
