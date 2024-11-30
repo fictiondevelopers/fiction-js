@@ -1,46 +1,63 @@
+/**
+ * Imports required dependencies and modules
+ */
 import { v4 as uuidv4 } from 'uuid';
 import validateModel from '../core/validation.js';
 import authOperations from '../auth/operations.js';
 import {prisma} from '../../apis/PrismaConfig.js';
+import { schemasDB } from '../../apis/db-structure.js';
 
+/**
+ * Main Endpoint class that handles API endpoint operations
+ * Provides functionality for CRUD operations, authentication, filtering etc.
+ */
 export default class Endpoint {
 
-
+    /**
+     * Initialize a new Endpoint instance
+     * @param {string} path - API endpoint path
+     * @param {string} method - HTTP method (defaults to "get")
+     */
     constructor(path, method="get"){
+        // Basic endpoint properties
         this.path = path;
         this.method = method;
 
+        // Query building properties
+        this.where = [];        // For WHERE clauses
+        this.select = [];       // For SELECT fields
+        this.orderBy = [];      // For ORDER BY clauses
+        this.limit = 10;        // Default pagination limit
+        this.offset = 0;        // Default pagination offset
 
-        this.where = [];
-        this.select = [];
-        this.orderBy = [];
-        this.limit = 10;
-        this.offset = 0;
+        // Authentication and user-specific flags
+        this.mine = false;      // Flag for user-specific data
+        this.mineId = null;     // User ID for filtering
+        this.doAuth = false;    // Authentication requirement flag
 
-        this.mine = false;
-        this.mineId = null;
-        this.doAuth = false;
+        // Data handling properties
+        this.filters = [];      // Query filters
+        this.pagination = [];   // Pagination settings
+        this.data = null;       // Response data
+        this.model = this.path.split("/")[0].toLowerCase();  // Database model name
 
-        this.filters = [];
-        this.pagination = [];
-
-        this.data = null;
-        this.model =  this.path.split("/")[0].toLowerCase();
-
-
-        this.histories = []
-        this.activeHistory = null;
-        this.statusCode = 200;
-        this.meUser = null;
-        this.authenticated = false;
-
-        this.meMode = false;
+        // History tracking for operations
+        this.histories = []     // Operation history stack
+        this.activeHistory = null;  // Current active history ID
+        this.statusCode = 200;      // HTTP response code
+        
+        // User authentication state
+        this.meUser = null;         // Authenticated user object
+        this.authenticated = false;  // Authentication status
+        this.meMode = false;        // User-specific mode flag
     }
-
-
 
     /////// build packs ////
 
+    /**
+     * Initializes a new operation sequence
+     * @returns {Endpoint} - Returns this instance for chaining
+     */
     start(){
         const iii = {auth:true,me:false};
         const uuid = uuidv4();
@@ -52,6 +69,7 @@ export default class Endpoint {
             history:[]
         }
 
+        // Reset state for new operation
         this.histories.push(newHistory);
         this.activeHistory = uuid;
         this.meMode = iii.me;
@@ -63,11 +81,13 @@ export default class Endpoint {
         this.offset = 0;
         this.filters = [];
 
+        // Record start operation in history
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"start",
             input:iii
         });
         
+        // Add auth step if required
         if(iii.auth){
             this.histories.find(h=>h.id==this.activeHistory).history.push({
                 type:"auth",
@@ -75,6 +95,7 @@ export default class Endpoint {
             });
         }
 
+        // Add mine step if user-specific
         if(iii.me){
             this.histories.find(h=>h.id==this.activeHistory).history.push({
                 type:"mine",
@@ -82,9 +103,12 @@ export default class Endpoint {
             });
         }
 
-
         return this;
     }
+
+    /**
+     * Adds authentication step to operation sequence
+     */
     auth(){
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"auth",
@@ -93,6 +117,9 @@ export default class Endpoint {
         return this;
     }
 
+    /**
+     * Adds user-specific filtering step
+     */
     mera(){
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"mine",
@@ -102,6 +129,10 @@ export default class Endpoint {
         return this;
     }
 
+    /**
+     * Adds filter step to operation sequence
+     * @param {Array} i - Array of filter conditions
+     */
     filter(i=[]){
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"filter",
@@ -110,6 +141,10 @@ export default class Endpoint {
         return this;
     }
 
+    /**
+     * Adds GET operation to sequence
+     * @param {Object} i - Get operation parameters
+     */
     get(i={}){
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"get",
@@ -125,6 +160,9 @@ export default class Endpoint {
     // TODO: upload
     // TODO: multi select in one query
 
+    /**
+     * Adds validation step to operation sequence
+     */
     validate(i={}){
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"validate",
@@ -133,6 +171,9 @@ export default class Endpoint {
         return this;
     }
 
+    /**
+     * Adds create operation to sequence
+     */
     create(i={}){
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"create",
@@ -141,6 +182,10 @@ export default class Endpoint {
         return this;
     }
 
+    /**
+     * Adds update operation to sequence
+     * @param {Object} i - Update parameters, defaults to updating by ID
+     */
     update(i={by:["id"]}){
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"update",
@@ -149,6 +194,9 @@ export default class Endpoint {
         return this;
     }
 
+    /**
+     * Adds delete operation to sequence
+     */
     delete(i={}){
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"delete",
@@ -165,6 +213,10 @@ export default class Endpoint {
     //     return this;
     // }
 
+    /**
+     * Adds return step to operation sequence
+     * Finalizes the operation chain
+     */
     return(i={}){
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"return",
@@ -173,6 +225,9 @@ export default class Endpoint {
         // return null; // to disable chaining after return has been called
     }
 
+    /**
+     * Marks current operation sequence as complete
+     */
     end(){
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"end",
@@ -184,12 +239,19 @@ export default class Endpoint {
 
     ///////////// build packs /////////////
     // custom helper functions //
+    
+    /**
+     * Extracts query parameters from request
+     */
     getQuery(input){
         const queryObject =  input.query;
         console.log("SFT: queryObject",queryObject);
         return queryObject;
     }
 
+    /**
+     * Checks if validation step exists in current history
+     */
     shouldVaildate(){
         const validateFound = this.histories.find(h=>h.id==this.activeHistory).history.find(h=>h.type=="validate");
         return validateFound?true:false;
@@ -204,6 +266,9 @@ export default class Endpoint {
 
     ///////////// execute /////////////
 
+    /**
+     * Resets endpoint state
+     */
     async cleanUp_execute(iii){
         this.meMode = false;
         this.where = [];
@@ -214,8 +279,11 @@ export default class Endpoint {
         this.filters = [];
     }
 
+    /**
+     * Handles authentication execution
+     * Verifies bearer token and sets user context
+     */
     async auth_execute(){
-
         const breaerToken = this.input?.headers?.authorization?.split(" ")[1];
 
         const {success, res} = await authOperations.auth_me(prisma,breaerToken);
@@ -229,6 +297,9 @@ export default class Endpoint {
         return this;
     }
 
+    /**
+     * Sets up user-specific filtering
+     */
     async mine_execute(){
         this.meMode = true;
         if(!this.authenticated){
@@ -238,8 +309,10 @@ export default class Endpoint {
         return this;
     }
 
+    /**
+     * Executes data validation
+     */
     async validate_execute(i={}){
-
         let data = this.input.body;
         if(i.id && i.id=="auto"){
             data = {...this.input.body, id:50};
@@ -250,6 +323,7 @@ export default class Endpoint {
         const {error, value} = await validateModel(this.model,data)
 
         if(error){
+            console.log("debug pt 1")
             this.statusCode = 400;
             this.data = {error:error.details[0].message};
             return false
@@ -258,57 +332,96 @@ export default class Endpoint {
         return true;
     }
 
+    /**
+     * Processes and applies filters to query
+     * Handles type casting based on schema
+     */
+    /**
+     * Processes and applies filters to the query based on schema definitions
+     * @param {Array} Cf - Custom filters array. If empty, uses all query params as filters
+     * @returns {Endpoint} Returns this instance for method chaining
+     */
     async filter_execute(Cf=[]){
-
+        // Debug logging for initial state
         console.log("when the function starts", this.where);
-
         console.log("SFT: Input Cf:", Cf);
         console.log("SFT: Initial this.query:", this.query);
-        
-        if(Cf.length==0){
+
+        // Get and validate model schema
+        const modelSchema = schemasDB.models[this.model];
+        if (!modelSchema) {
+            console.error(`Model "${this.model}" not found in schema definitions`);
+            return this;
+        }
+
+        /**
+         * Helper function to cast values according to schema type
+         * @param {any} value - The value to cast
+         * @param {Object} fieldSchema - Schema definition for the field
+         * @returns {any} The casted value
+         */
+        const castValue = (value, fieldSchema) => {
+            if (!fieldSchema) return value;
+            
+            const schemaType = fieldSchema.type;
+            if (schemaType === 'number') return Number(value);
+            if (schemaType === 'boolean') return value === 'true';
+            if (schemaType === 'date') return new Date(value);
+            return value; // Default to string
+        };
+
+        // Process filters based on whether custom filters were provided
+        if (Cf.length == 0) {
+            // No custom filters - use all query parameters
             console.log("SFT: No custom filters provided");
             this.filters = this.query || {};
             console.log("SFT: Filters after query assignment:", this.filters);
+            
+            // Convert query parameters to properly typed filter objects
             this.filters = Object.entries(this.filters).map(([key, value]) => {
                 console.log("SFT: Converting entry:", key, value);
-                return {[key]: value || "gublomoteory"};
+                const fieldSchema = modelSchema.extract(key);
+                const castedValue = castValue(value || "-100", fieldSchema); // if someone attempts to send empty
+                return {[key]: castedValue};
             });
-            console.log("SFT: Filters after conversion:", this.filters);
-        }else{
+        } else {
+            // Use only the specified custom filters
             console.log("SFT: Custom filters provided:", Cf);
-            if(this.query){
+            if (this.query) {
+                // Map custom filters to their query values with proper type casting
                 console.log("SFT: Query exists, mapping custom filters");
-                this.filters = Cf.map(f=>{
+                this.filters = Cf.map(f => {
                     console.log("SFT: Mapping filter:", f, "Value:", this.query[f]);
-                    return {[f]:this.query[f] || "gublomoteory"};
+                    const fieldSchema = modelSchema.extract(f);
+                    const castedValue = castValue(this.query[f] || "-100", fieldSchema);  // if api had filter forced but frontend ddin't send a value, set -100 or "-100" to fail the query
+                    return {[f]: castedValue};
                 });
-                console.log("SFT: Filters after mapping:", this.filters);
-            }else{
+            } else {
+                // No query parameters available
                 console.log("SFT: No query exists, setting empty filters");
                 this.filters = [];
             }
         }
 
-        console.log("SFT: this.filters beforeeee",this.filters);
-
-        this.filters = this.filters.filter(f=>f!=null);
-
-
-
-        console.log("SFT: this.filters",this.filters);
-
+        // Clean up and finalize filters
+        console.log("SFT: this.filters beforeeee", this.filters);
+        this.filters = this.filters.filter(f => f != null);  // Remove null filters
+        console.log("SFT: this.filters", this.filters);
         
-        this.where = [...this.where].concat(this.filters)
-
-        console.log("SFT: this.where finallll",this.where);
+        // Combine existing where conditions with new filters
+        this.where = [...this.where].concat(this.filters);
+        console.log("SFT: this.where finallll", this.where);
 
         return this;
     }
 
     
 
+    /**
+     * Executes GET operation with pagination
+     * Builds query with filters, sorting, and pagination
+     */
     async get_execute(i={}){
-
         let q = {}
 
         if(this.where.length>0){
@@ -346,8 +459,7 @@ export default class Endpoint {
         console.log("SFT: q",q);
 
        
-
-        // Get total count
+        // Get total count for pagination
         const total = await prisma[this.model].count({
             where: q.where
         });
@@ -376,8 +488,11 @@ export default class Endpoint {
         return this;
     }
 
+    /**
+     * Executes CREATE operation
+     * Handles user-specific creation if in meMode
+     */
     async create_execute(i={}){
-
         console.log("meeeeeeeeeeeeeeeeeeeeeeeeeeeee mode", this.meMode);
 
         let input_data = this.input.body;
@@ -407,8 +522,10 @@ export default class Endpoint {
         return this;
     }
 
+    /**
+     * Executes UPDATE operation
+     */
     async update_execute(i={}){
-
         let q = {}
         if(this.where.length>0){
             q.where = this.where.reduce((acc, curr) => {
@@ -416,11 +533,26 @@ export default class Endpoint {
             }, {});
         }
 
+        const exists = await prisma[this.model].findFirst({where:q.where});
+        if(!exists){
+            console.log("Before update, I didn't find as per the where clause",q.where);
+            this.statusCode = 404;
+            this.data = {error:"Not found"};
+            return false;
+        }
+
+        
+
+       
+
         q.data = this.input.body;
         this.data = await prisma[this.model].update(q);
-        return this;
+        return true;
     }
 
+    /**
+     * Executes DELETE operation
+     */
     async delete_execute(d){
         let q = {}
         if(this.where.length>0){
@@ -429,11 +561,21 @@ export default class Endpoint {
             }, {});
         }
 
-        q.data = this.input.body;
+        const exists = await prisma[this.model].findFirst({where:q.where});
+        if(!exists){
+            this.statusCode = 404;
+            this.data = {error:"Not found"};
+            return false;
+        }
+
+        // q.data = this.input.body;
         this.data = await prisma[this.model].delete(q);
-        return this;
+        return true;
     }
 
+    /**
+     * Finalizes operation and sends response
+     */
     async return_execute(code=200){
         this.statusCode = code;
         this.histories = [];
@@ -452,6 +594,7 @@ export default class Endpoint {
         console.log("SFT: this.histories",this.histories);
 
         if(this.histories.length==0){
+            console.log("debug pt 2")
             this.return_execute(400);
             return;
         }
@@ -504,6 +647,7 @@ export default class Endpoint {
                     console.log(`FJS: step #${j} create`);
                     const createSuccess = await this.create_execute(step.input);
                     if(!createSuccess){
+                        console.log("debug pt 3")
                         await this.return_execute(400);
                         return;
                     }
@@ -511,18 +655,29 @@ export default class Endpoint {
 
                 if(step.type=="update"){
                     console.log(`FJS: step #${j} update`);
-                    await this.update_execute(step.input);
+                    const updateSuccess = await this.update_execute(step.input);
+                    if(!updateSuccess){
+                        console.log("debug pt 3")
+                        await this.return_execute(400);
+                        return;
+                    }
                 }
 
                 if(step.type=="delete"){
                     console.log(`FJS: step #${j} delete`);
-                    await this.delete_execute();
+                    const deleteSuccess = await this.delete_execute();
+                    if(!deleteSuccess){
+                        console.log("debug pt 3")
+                        await this.return_execute(400);
+                        return;
+                    }
                 }
 
                 if(step.type=="validate"){
                     console.log(`FJS: step #${j} validate`);
                     const isValid =await this.validate_execute(step.input);
                     if(!isValid){
+                        console.log("debug pt 4")
                         await this.return_execute(400);
                         return;
                     }

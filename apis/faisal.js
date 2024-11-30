@@ -5,29 +5,44 @@ const e = new EndpointManager();
 
 // Register the "products" API route
 e.register("products")
-    // .start()
-    // .filter(["sku"]) // only provide the filters that you want to force, optional filters can be sent via query params
-    // .get({limit:100}) // default limit is 10, you can override it here, you can also override the offset
-    // .end()
-    // .return(200);
+    .start()
+    .filter() // only provide the filters that you want to force, optional filters can be sent via query params
+    .get({limit:100}) // default limit is 10, you can override it here, you can also override the offset
+    .end()
+    .return(200);
 
-    // e.register("products/mine")
-    // .start()
-    // .auth()
-    // .mera()
-    // .filter(["name"])
-    // .filter(["sku"])
-    // .get({limit:100})
-    // .end()
-    // .return(200);
 
-    e.register("products/update")
+    e.register("products/one")
+    .start()
+    .filter(["id"]) // only provide the filters that you want to force, optional filters can be sent via query params
+    .get() // default limit is 10, you can override it here, you can also override the offset
+    .end()
+    .return(200);
+
+
+    e.register("products/mine")
+    .start()
+    .auth()
+    .mera()
+    .get()
+    .end()
+    .return(200);
+
+    e.post("products/update")
     .start()
     .auth()
     .mera()
     .filter(["id"])
-    // .update({by:["id"]})
     .update()
+    .end()
+    .return(200);
+
+    e.delete("products/delete")
+    .start()
+    .auth()
+    .mera()
+    .filter(["id"])
+    .delete()
     .end()
     .return(200);
 

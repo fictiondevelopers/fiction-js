@@ -207,7 +207,7 @@ async function startServer() {
   //////////////////////////////////////////////// API Routes ////////////////////////////////////////
   //////////////////////////////////////////////// API Routes ////////////////////////////////////////
   apiRoutes.forEach(endpointTemplate => {
-    app[endpointTemplate.method || 'get']("/" + endpointTemplate.path, async (req, res) => {
+    app[endpointTemplate.method || 'get']("/api/" + endpointTemplate.path, async (req, res) => {
         try {
             // Create a new instance for each request
             const endpoint = new Endpoint(endpointTemplate.path, prisma, endpointTemplate.method);
