@@ -1,4 +1,4 @@
-import EndpointManager from "../src/core/EndpointManager.js";
+import EndpointManager from "../../src/core/EndpointManager.js";
 
 // Create an instance of the EndpointManager
 const e = new EndpointManager();

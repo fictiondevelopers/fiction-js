@@ -15,7 +15,7 @@ import passport from 'passport';
 import session from 'express-session';
 import './../passport-setup.js';
 import cookieParser from 'cookie-parser';
-import { apiRoutes } from './faisal.js';
+import loadRoutes from './index.js';
 import Endpoint from '../src/core/EndpointsTransformer.js';
 import {prisma} from './PrismaConfig.js';
 import uploadToS3 from '../src/core/fileUploaderToS3.js';
@@ -208,6 +208,7 @@ async function startServer() {
   //////////////////////////////////////////////// API Routes ////////////////////////////////////////
   //////////////////////////////////////////////// API Routes ////////////////////////////////////////
   //////////////////////////////////////////////// API Routes ////////////////////////////////////////
+  const apiRoutes = await loadRoutes();
   apiRoutes.forEach(endpointTemplate => {
     app[endpointTemplate.method || 'get']("/api/" + endpointTemplate.path, async (req, res) => {
         try {
