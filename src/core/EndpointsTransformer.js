@@ -153,9 +153,6 @@ export default class Endpoint {
         return this;
     }
 
-    // TODO: create
-    // TODO: update
-    // TODO: delete
     // TODO: join
     // TODO: upload
     // TODO: multi select in one query
@@ -399,9 +396,29 @@ export default class Endpoint {
          * @returns {any} The casted value
          */
         const castValue = (value, fieldSchema) => {
+
+            
+
+
             if (!fieldSchema) return value;
             
             const schemaType = fieldSchema.type;
+
+            // Handle comma-separated strings by converting to array
+            if (typeof value === 'string' && value.includes(',')) {
+                console.log("SFT: value is a comma separated string", value);
+                const x = value.split(',').map(v => {
+                    const trimmed = v.trim();
+                    console.log("SFT: v", trimmed);
+                    const y = schemaType === 'number' ? parseInt(trimmed) || null : trimmed;
+                    console.log("SFT: y", y);
+                    return y;
+                }).filter(v => v !== null);
+                console.log("SFT: x", x);
+                return x;
+            }
+
+
             if (schemaType === 'number') return Number(value);
             if (schemaType === 'boolean') return value === 'true';
             if (schemaType === 'date') return new Date(value);
@@ -420,6 +437,12 @@ export default class Endpoint {
                 console.log("SFT: Converting entry:", key, value);
                 const fieldSchema = modelSchema.extract(key);
                 const castedValue = castValue(value || "-100", fieldSchema); // if someone attempts to send empty
+
+                
+                // handling multiple values for the same key
+                if(Array.isArray(castedValue)){
+                    return {[key]: {in: castedValue}};
+                }
                 return {[key]: castedValue};
             });
         } else {
@@ -432,6 +455,11 @@ export default class Endpoint {
                     console.log("SFT: Mapping filter:", f, "Value:", this.query[f]);
                     const fieldSchema = modelSchema.extract(f);
                     const castedValue = castValue(this.query[f] || "-100", fieldSchema);  // if api had filter forced but frontend ddin't send a value, set -100 or "-100" to fail the query
+
+                    // handling multiple values for the same key
+                    if(Array.isArray(castedValue)){
+                        return {[f]: {in: castedValue}};
+                    }
                     return {[f]: castedValue};
                 });
             } else {
