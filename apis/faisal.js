@@ -7,6 +7,7 @@ const e = new EndpointManager();
 e.register("products")
     .start()
     .filter() // only provide the filters that you want to force, optional filters can be sent via query params
+    
     .get({limit:100}) // default limit is 10, you can override it here, you can also override the offset
     .end()
     .return(200);
@@ -22,7 +23,7 @@ e.register("products")
 
     e.register("products/mine")
     .start()
-    .auth()
+    .auth({roles:["user"], permissions:["users.update.all"]})
     .mera()
     .get()
     .end()

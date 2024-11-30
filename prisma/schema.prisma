@@ -31,6 +31,33 @@ model users {
   otp_method  String?  
 }
 
+model user_roles {
+  id  Int  @id @default(autoincrement())
+  user_id  Int  
+  role_id  Int  
+  created_at  DateTime?  
+  updated_at  DateTime?  
+  created_by  Int?  
+  updated_by  Int?  
+}
+
+model roles {
+  id  Int  @id @default(autoincrement())
+  name  String  
+  created_at  DateTime?  
+  updated_at  DateTime?  
+}
+
+model role_permissions {
+  id  Int  @id @default(autoincrement())
+  role_id  Int  
+  permission_id  Int  
+  permission_type  String  
+  created_at  DateTime?  
+  updated_at  DateTime?  
+  enabled  Boolean?  
+}
+
 model otp_codes {
   id  Int  @id @default(autoincrement())
   user_id  Int  
@@ -39,8 +66,8 @@ model otp_codes {
   method  String  
   used  Boolean?  
   expires_at  DateTime  
-  created_at  DateTime  
-  updated_at  DateTime  
+  created_at  DateTime?  
+  updated_at  DateTime?  
   otp_method  String?  
 }
 
@@ -51,5 +78,6 @@ model products {
   price  Int  
   description  String?  
   user_id  Int?  
-  created_at  DateTime  
+  created_at  DateTime?  
+  updated_at  DateTime?  
 }

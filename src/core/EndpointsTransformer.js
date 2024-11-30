@@ -109,10 +109,10 @@ export default class Endpoint {
     /**
      * Adds authentication step to operation sequence
      */
-    auth(){
+    auth(i={}){
         this.histories.find(h=>h.id==this.activeHistory).history.push({
             type:"auth",
-            input:{}
+            input:i
         });
         return this;
     }
@@ -283,7 +283,7 @@ export default class Endpoint {
      * Handles authentication execution
      * Verifies bearer token and sets user context
      */
-    async auth_execute(){
+    async auth_execute(i={}){
         const breaerToken = this.input?.headers?.authorization?.split(" ")[1];
 
         const {success, res} = await authOperations.auth_me(prisma,breaerToken);
@@ -292,6 +292,44 @@ export default class Endpoint {
             this.data = {error:res};
             return false;
         }
+
+
+        // roles
+        let permissionFailed = false;
+        const roles = i.roles || [];
+        const permissions = i.permissions || [];
+
+        if(roles.length>0){
+            const rolesList = await prisma.roles.findMany({where:{name:{in:roles}}});
+            const roleIds = rolesList.map(r=>r.id);
+            const userRoles = await prisma.user_roles.findMany({where:{user_id:res.id, role_id:{in:roleIds}}});
+            if(userRoles.length==0){
+                console.log("SFT: role denied");
+                permissionFailed = true;
+            }
+
+            if(permissions.length>0){
+                const perm_where = {where:{role_id:{in:roleIds}, permission_type:{in:permissions}, enabled:true}};
+                console.log("SFT: perm_where",perm_where);
+                console.log("SFT: permissions",permissions);
+                console.log("SFT: roleIds",roleIds);
+                const permissionsList = await prisma.role_permissions.findMany(perm_where);
+                console.log("SFT: permissionsList that was found",permissionsList);
+                if(permissionsList.length==0){
+                    console.log("SFT: permission denied");
+                    permissionFailed = true;
+                }
+            }
+        }
+
+        if(permissionFailed){
+            this.statusCode = 403;
+            this.data = {error:"Permission denied"};
+            return false;
+        }
+
+
+
         this.meUser = res;
         this.authenticated = true;
         return this;
@@ -617,7 +655,7 @@ export default class Endpoint {
 
                 if(step.type=="auth"){
                     console.log(`FJS: step #${j} auth`);
-                    const authSuccess = await this.auth_execute();
+                    const authSuccess = await this.auth_execute(step.input);
                     if(!authSuccess){
                         await this.return_execute(401);
                         return;

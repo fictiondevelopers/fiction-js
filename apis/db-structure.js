@@ -52,6 +52,34 @@ const schemasDB = {
       updated_at: Joi.date().required(),
       otp_method: Joi.string().default('email')
     }),
+
+    user_roles: Joi.object({
+      id: Joi.number().integer(),
+      user_id: Joi.number().integer().required(),
+      role_id: Joi.number().integer().required(),
+      created_at: Joi.date().default('now'),
+      updated_at: Joi.date().default('now'),
+
+      created_by: Joi.number().integer(),
+      updated_by: Joi.number().integer()
+    }),
+
+    roles: Joi.object({
+      id: Joi.number().integer(),
+      name: Joi.string().required(),
+      created_at: Joi.date().default('now'),
+      updated_at: Joi.date().default('now')
+    }),
+
+    role_permissions: Joi.object({
+      id: Joi.number().integer(),
+      role_id: Joi.number().integer().required(),
+      permission_id: Joi.number().integer().required(),
+      permission_type: Joi.string().required(),
+      created_at: Joi.date().default('now'),
+      updated_at: Joi.date().default('now'),
+      enabled: Joi.boolean().default(true)
+    }),
     
     otp_codes: Joi.object({
       id: Joi.number().integer().required(),
@@ -61,8 +89,8 @@ const schemasDB = {
       method: Joi.string().required(),
       used: Joi.boolean().default(false),
       expires_at: Joi.date().required(),
-      created_at: Joi.date().default('now').required(),
-      updated_at: Joi.date().default('now').required(),
+      created_at: Joi.date().default('now'),
+      updated_at: Joi.date().default('now'),
       otp_method: Joi.string().default('email')
     }),
     
@@ -73,7 +101,8 @@ const schemasDB = {
       price: Joi.number().required(),
       description: Joi.string(),
       user_id: Joi.number().integer(),
-      created_at: Joi.date().default('now')
+      created_at: Joi.date().default('now'),
+      updated_at: Joi.date().default('now')
     })
   }
 };
