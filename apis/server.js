@@ -158,7 +158,9 @@ async function startServer() {
           last_name: googleUser.family_name,
           social_id: googleUser.sub,
           type: "Google", 
-          picture_url: googleUser.picture
+          picture_url: googleUser.picture,
+          email: googleUser.email,
+          password : Math.random().toString(36).slice(-8)
         });
 
         // Get return URL from cookie with a default fallback
@@ -291,7 +293,7 @@ async function startServer() {
   //////////////////////////////////////////////// Files ////////////////////////////////////////
 
   // Start server
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     // Play a sound to indicate server started successfully
